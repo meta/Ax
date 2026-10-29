@@ -31,6 +31,9 @@ jobs:
   deploy:
     needs: tests-and-coverage-pinned # only run if test step succeeds
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       # `uv pip ...` requires venv by default. This skips that requirement.
       UV_SYSTEM_PYTHON: 1
@@ -55,6 +58,4 @@ jobs:
     - name: Deploy to PyPI
       uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # release/v1.13
       with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
         verbose: true
