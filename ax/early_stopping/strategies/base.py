@@ -323,6 +323,7 @@ class BaseEarlyStoppingStrategy(ABC, Base):
         next_boundary = curr_boundary + interval
 
         reason = (
+            # pyrefly: ignore [invalid-argument]
             f"Trial has not crossed an interval boundary. "
             f"Progressed from {prev_progression:.2f} to {curr_progression:.2f}; "
             f"both are in the same interval [{curr_boundary:.2f}, "
