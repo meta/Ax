@@ -1873,6 +1873,7 @@ class TestGenerationStrategy(TestCase):
             self.assertEqual(trial.generator_runs[2]._generation_node_name, "sobol_3")
 
         # after running the next trial should be made from sobol 4
+        # pyrefly: ignore [unbound-name]
         trial.run()
         trial = exp.new_batch_trial(generator_runs=gs_2.gen(exp)[0])
         self.assertEqual(trial.generator_runs[0]._generation_node_name, "sobol_4")

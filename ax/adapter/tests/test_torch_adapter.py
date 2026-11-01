@@ -1227,6 +1227,7 @@ class TorchAdapterTest(TestCase):
         parameter_names = list(experiment.parameters.keys())
         outcomes = [assert_is_instance(Keys.PAIRWISE_PREFERENCE_QUERY.value, str)]
 
+        # pyrefly: ignore [unbound-name]
         datasets, _, candidate_metadata = pmb._convert_experiment_data(
             experiment_data=pmb._training_data,
             outcomes=outcomes,
