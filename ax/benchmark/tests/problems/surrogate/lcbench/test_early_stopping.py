@@ -3,8 +3,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-strict
-
 from unittest.mock import patch
 
 import numpy as np
@@ -62,6 +60,15 @@ class TestEarlyStoppingProblem(TestCase):
             mock_create_surrogate_regressor.call_args_list
         )
         self.assertEqual(len(create_surrogate_regressor_call_args), 2)
+        for call in create_surrogate_regressor_call_args:
+            self.assertEqual(
+                call.kwargs["numeric_columns"],
+                ["max_dropout", "num_layers", "weight_decay"],
+            )
+            self.assertEqual(
+                call.kwargs["log_numeric_columns"],
+                ["batch_size", "max_units", "learning_rate", "momentum"],
+            )
         self.assertEqual(
             problem.optimization_config.objective.metric_names[0], DEFAULT_METRIC_NAME
         )

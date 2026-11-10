@@ -3,8 +3,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-strict
-
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, InitVar
 from functools import partial
@@ -233,7 +231,9 @@ class LearningCurveBenchmarkTestFunction(BenchmarkTestFunction):
 
         parameter_names = get_lcbench_parameter_names()
         log_scale_parameter_names = get_lcbench_log_scale_parameter_names()
-        numeric_columns = set(parameter_names) - set(log_scale_parameter_names)
+        numeric_columns = [
+            name for name in parameter_names if name not in log_scale_parameter_names
+        ]
 
         self.metric_surrogate = _create_surrogate_regressor(
             base_regressor=metric_base_surrogate,
