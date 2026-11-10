@@ -3,8 +3,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-strict
-
 import math
 from itertools import product
 from unittest.mock import Mock
@@ -346,6 +344,59 @@ class TestBenchmarkMetric(TestCase):
     def test_fetch_trial_multiple_time_steps_with_simulator(self) -> None:
         self._test_fetch_trial_multiple_time_steps_with_simulator(batch=False)
         self._test_fetch_trial_multiple_time_steps_with_simulator(batch=True)
+
+    def test_fetch_trial_data_at_simulated_time_boundary(self) -> None:
+        start_time = 192.0
+        runtime = 320.10965660870767
+        completed_time = start_time + runtime
+        self.assertLess(completed_time - start_time, runtime)
+        for early_stop, metrics in product(
+            [False, True], [self.map_metrics, self.tv_metrics]
+        ):
+            metric = metrics["test_metric1"]
+            with self.subTest(early_stop=early_stop, metric_cls=type(metric)):
+                trial = get_test_trial(multiple_time_steps=True)
+                metadata = trial.run_metadata["benchmark_metadata"]
+                df = metadata.dfs["test_metric1"]
+                df["virtual runtime"] = [0.0, runtime / 2, runtime]
+                df["mean"] = [0.0, 1.0, 2.0]
+                simulator = BackendSimulator(
+                    options=BackendSimulatorOptions(internal_clock=start_time),
+                    verbose_logging=False,
+                )
+                simulator.run_trial(trial.index, runtime=runtime)
+                trial.update_run_metadata(
+                    {
+                        "benchmark_metadata": BenchmarkTrialMetadata(
+                            dfs=metadata.dfs, backend_simulator=simulator
+                        )
+                    }
+                )
+                simulator.options.internal_clock = np.nextafter(completed_time, -np.inf)
+                data = assert_is_instance(metric.fetch_trial_data(trial).value, Data)
+                self.assertEqual(data.df["mean"].tolist(), [1.0])
+                if isinstance(metric, MapMetric):
+                    self.assertEqual(data.full_df["step"].tolist(), [0, 1])
+                if early_stop:
+                    simulator.stop_trial(trial.index)
+                else:
+                    simulator.options.internal_clock = completed_time
+                    simulator._update_completed(completed_time)
+                data = assert_is_instance(metric.fetch_trial_data(trial).value, Data)
+                self.assertEqual(data.df["mean"].tolist(), [1.0 if early_stop else 2.0])
+                if isinstance(metric, MapMetric):
+                    self.assertEqual(
+                        data.full_df["step"].tolist(),
+                        [0, 1] if early_stop else [0, 1, 2],
+                    )
+                simulator.options.internal_clock = completed_time + 1
+                data = assert_is_instance(metric.fetch_trial_data(trial).value, Data)
+                self.assertEqual(data.df["mean"].tolist(), [1.0 if early_stop else 2.0])
+                if isinstance(metric, MapMetric):
+                    self.assertEqual(
+                        data.full_df["step"].tolist(),
+                        [0, 1] if early_stop else [0, 1, 2],
+                    )
 
     def test_sim_trial_completes_in_future_raises(self) -> None:
         simulator = BackendSimulator()

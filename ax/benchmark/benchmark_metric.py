@@ -3,8 +3,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-strict
-
 """
 Metric classes for Ax benchmarking.
 
@@ -183,7 +181,7 @@ class BenchmarkMetricBase(Metric):
             start_time = none_throws(sim_trial.sim_start_time)
 
             if sim_trial.sim_completed_time is None:  # Still running
-                max_t = backend_simulator.time - start_time
+                max_t = backend_simulator.time
             elif sim_trial.sim_completed_time > backend_simulator.time:
                 raise RuntimeError(
                     "The trial's completion time is in the future! This is "
@@ -192,10 +190,10 @@ class BenchmarkMetricBase(Metric):
                 )
             else:
                 # Completed, may have stopped early -- can't assume all data available
-                completed_time = none_throws(sim_trial.sim_completed_time)
-                max_t = completed_time - start_time
+                max_t = none_throws(sim_trial.sim_completed_time)
 
-            available_data = df[df["virtual runtime"] <= max_t]
+            # Compare absolute times to avoid cancellation when subtracting the start.
+            available_data = df[start_time + df["virtual runtime"] <= max_t]
 
         if not self.observe_noise_sd:
             available_data.loc[:, "sem"] = np.nan
