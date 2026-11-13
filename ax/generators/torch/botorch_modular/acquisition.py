@@ -542,6 +542,7 @@ class Acquisition(Base):
             # Otherwise, use direct selection mode.
             num_samples_attr = getattr(sampling_strategy, "num_samples", None)
             num_samples: int | None = (
+                # pyrefly: ignore [bad-argument-type]
                 int(num_samples_attr) if num_samples_attr is not None else None
             )
 
