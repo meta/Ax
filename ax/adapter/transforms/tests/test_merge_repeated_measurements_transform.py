@@ -176,3 +176,68 @@ class MergeRepeatedMeasurementsTransformTest(TestCase):
             ],
         )
         assert_frame_equal(transformed_data.observation_data, expected_obs_data)
+
+    def test_missing_metrics_remain_missing(self) -> None:
+        for missing_metric in ("m1", "m2"):
+            with self.subTest(missing_metric=missing_metric):
+                missing_index = ("m1", "m2").index(missing_metric)
+                means = [[2.0, 2.0], [4.0, 4.0], [6.0, 9.0]]
+                sems = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+                for i in (0, 1):
+                    means[i][missing_index] = np.nan
+                    sems[i][missing_index] = np.nan
+                experiment = get_experiment_with_observations(
+                    observations=means,
+                    sems=sems,
+                    parameterizations=[{"x": 0.0}, {"x": 0.0}, {"x": 1.0}],
+                )
+                experiment_data = extract_experiment_data(
+                    experiment=experiment, data_loader_config=DataLoaderConfig()
+                )
+                transformed_data = MergeRepeatedMeasurements(
+                    experiment_data=experiment_data
+                ).transform_experiment_data(deepcopy(experiment_data))
+                observations = transformed_data.convert_to_list_of_observations()
+                observed_metric = "m2" if missing_metric == "m1" else "m1"
+                self.assertTrue(
+                    np.isnan(
+                        transformed_data.observation_data.loc[
+                            (0, "0_0"), ("mean", missing_metric)
+                        ]
+                    )
+                )
+                self.assertTrue(
+                    np.isnan(
+                        transformed_data.observation_data.loc[
+                            (0, "0_0"), ("sem", missing_metric)
+                        ]
+                    )
+                )
+                self.assertEqual(
+                    observations[0].data.metric_signatures, [observed_metric]
+                )
+                np.testing.assert_allclose(observations[0].data.means, [2.4])
+                np.testing.assert_allclose(observations[0].data.covariance, [[0.8]])
+                self.assertEqual(observations[1].data.metric_signatures, ["m1", "m2"])
+                np.testing.assert_allclose(observations[1].data.means, [6.0, 9.0])
+                np.testing.assert_allclose(
+                    observations[1].data.covariance, np.diag([9.0, 9.0])
+                )
+
+    def test_metric_observed_only_in_later_trial(self) -> None:
+        experiment = get_experiment_with_observations(
+            observations=[[2.0, np.nan], [4.0, 8.0]],
+            sems=[[1.0, np.nan], [2.0, 2.0]],
+            parameterizations=[{"x": 0.0}, {"x": 0.0}],
+        )
+        experiment_data = extract_experiment_data(
+            experiment=experiment, data_loader_config=DataLoaderConfig()
+        )
+        transformed_data = MergeRepeatedMeasurements(
+            experiment_data=experiment_data
+        ).transform_experiment_data(deepcopy(experiment_data))
+        observations = transformed_data.convert_to_list_of_observations()
+        self.assertEqual(len(observations), 1)
+        self.assertEqual(observations[0].data.metric_signatures, ["m1", "m2"])
+        np.testing.assert_allclose(observations[0].data.means, [2.4, 8.0])
+        np.testing.assert_allclose(observations[0].data.covariance, np.diag([0.8, 4.0]))
