@@ -192,10 +192,7 @@ class StratifiedStandardizeY(Transform):
                 old_weights[i] * float(self.Ystd[(sig, strata)])
                 for i, sig in enumerate(obj_sigs)
             ]
-            new_metric_weights = [
-                (name, new_w)
-                for (name, _), new_w in zip(objective.metric_weights, new_weights)
-            ]
+            new_metric_weights = list(zip(objective.metric_names, new_weights))
             optimization_config.objective = _build_objective_from_metric_weights(
                 new_metric_weights,
                 metric_name_to_signature=objective.metric_name_to_signature,
@@ -329,10 +326,7 @@ class StratifiedStandardizeY(Transform):
                         for i, sig in enumerate(c_sigs)
                     )
                 )
-                new_metric_weights = [
-                    (name, new_w)
-                    for (name, _), new_w in zip(c.metric_weights, new_weights)
-                ]
+                new_metric_weights = list(zip(c.metric_names, new_weights))
                 op_str = ">=" if c.op == ComparisonOp.GEQ else "<="
                 new_constraints.append(
                     OutcomeConstraint(
@@ -351,10 +345,13 @@ class StratifiedStandardizeY(Transform):
                     c.bound * self.Ystd[(c_sig, strata)] + self.Ymean[(c_sig, strata)]
                 )
                 op_str = ">=" if c.op == ComparisonOp.GEQ else "<="
+                metric_name_weights = [
+                    (name, w) for name, (_, w) in zip(c.metric_names, c.metric_weights)
+                ]
                 new_constraints.append(
                     OutcomeConstraint(
                         expression=build_constraint_expression_str(
-                            metric_weights=c.metric_weights,
+                            metric_weights=metric_name_weights,
                             op=op_str,
                             bound=new_bound,
                             relative=c.relative,

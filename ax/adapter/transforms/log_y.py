@@ -107,8 +107,12 @@ class LogY(Transform):
                         f"{base_str} since the bound isn't positive, got: {c.bound}."
                     )
                 else:
+                    metric_name_weights = [
+                        (name, w)
+                        for name, (_, w) in zip(c.metric_names, c.metric_weights)
+                    ]
                     new_expr = build_constraint_expression_str(
-                        metric_weights=c.metric_weights,
+                        metric_weights=metric_name_weights,
                         op=">=" if c.op == ComparisonOp.GEQ else "<=",
                         bound=np.log(c.bound),
                         relative=c.relative,
@@ -225,8 +229,11 @@ class LogY(Transform):
             if sig in self.metric_signatures:
                 if c.relative:
                     raise ValueError("Unexpected relative transform.")
+                metric_name_weights = [
+                    (name, w) for name, (_, w) in zip(c.metric_names, c.metric_weights)
+                ]
                 new_expr = build_constraint_expression_str(
-                    metric_weights=c.metric_weights,
+                    metric_weights=metric_name_weights,
                     op=">=" if c.op == ComparisonOp.GEQ else "<=",
                     bound=np.exp(c.bound),
                     relative=c.relative,

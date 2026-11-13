@@ -757,6 +757,35 @@ class RelativizeDataOptConfigTest(TestCase):
                     fixed_features=Mock(),
                 )
 
+    def test_relative_constraint_with_signature_override(self) -> None:
+        for relativize_cls in [Relativize, RelativizeWithConstantControl]:
+            relativize = relativize_cls(search_space=None, adapter=self.model)
+            optimization_config = get_branin_optimization_config()
+            optimization_config.outcome_constraints = [
+                OutcomeConstraint(
+                    expression="b2 >= 0.8 * baseline",
+                    metric_name_to_signature={"b2": "b2_sig"},
+                )
+            ]
+            new_config = relativize.transform_optimization_config(
+                optimization_config=deepcopy(optimization_config),
+                adapter=None,
+                fixed_features=Mock(),
+            )
+            transformed = new_config.outcome_constraints[0]
+            self.assertFalse(transformed.relative)
+            self.assertEqual(transformed.metric_names, ["b2"])
+            self.assertEqual(transformed.metric_signatures, ["b2_sig"])
+            self.assertAlmostEqual(transformed.bound, -20.0)
+            untransformed = relativize.untransform_outcome_constraints(
+                outcome_constraints=new_config.outcome_constraints,
+                fixed_features=Mock(),
+            )[0]
+            self.assertTrue(untransformed.relative)
+            self.assertEqual(untransformed.metric_names, ["b2"])
+            self.assertEqual(untransformed.metric_signatures, ["b2_sig"])
+            self.assertAlmostEqual(untransformed.bound, -20.0)
+
     def test_transform_optimization_config_with_relative_thresholds(self) -> None:
         for relativize_cls in [Relativize, RelativizeWithConstantControl]:
             relativize = relativize_cls(

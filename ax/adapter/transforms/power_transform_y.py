@@ -191,8 +191,12 @@ class PowerTransformY(Transform):
                     else:
                         transform = self.power_transforms[c_sig].transform
                         new_bound = transform(np.array(c.bound, ndmin=2)).item()
+                        metric_name_weights = [
+                            (name, w)
+                            for name, (_, w) in zip(c.metric_names, c.metric_weights)
+                        ]
                         new_expr = build_constraint_expression_str(
-                            metric_weights=c.metric_weights,
+                            metric_weights=metric_name_weights,
                             op=">=" if c.op == ComparisonOp.GEQ else "<=",
                             bound=new_bound,
                             relative=c.relative,
@@ -273,8 +277,12 @@ class PowerTransformY(Transform):
                     else:
                         transform = self.power_transforms[c_sig].inverse_transform
                         new_bound = transform(np.array(c.bound, ndmin=2)).item()
+                        metric_name_weights = [
+                            (name, w)
+                            for name, (_, w) in zip(c.metric_names, c.metric_weights)
+                        ]
                         new_expr = build_constraint_expression_str(
-                            metric_weights=c.metric_weights,
+                            metric_weights=metric_name_weights,
                             op=">=" if c.op == ComparisonOp.GEQ else "<=",
                             bound=new_bound,
                             relative=c.relative,
