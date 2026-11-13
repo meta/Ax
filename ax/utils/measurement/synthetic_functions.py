@@ -259,7 +259,7 @@ class Branin(SyntheticFunction):
 
     _required_dimensionality = 2
     _domain: list[tuple[float, float]] = [(-5.0, 10.0), (0.0, 15.0)]
-    # pyrefly: ignore [bad-override-mutable-attribute]
+    # pyrefly: ignore [bad-override, bad-override-mutable-attribute]
     _minimums: list[tuple[float, float]] = [
         (-np.pi, 12.275),
         (np.pi, 2.275),
@@ -285,7 +285,7 @@ class Aug_Branin(SyntheticFunction):
 
     _required_dimensionality = 3
     _domain: list[tuple[float, float]] = [(-5.0, 10.0), (0.0, 15.0), (0.0, 1.0)]
-    # pyrefly: ignore [bad-override-mutable-attribute]
+    # pyrefly: ignore [bad-override, bad-override-mutable-attribute]
     _minimums: list[tuple[float, float, float]] = [
         (-np.pi, 12.275, 1.0),
         (np.pi, 2.275, 1.0),
