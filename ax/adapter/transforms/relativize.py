@@ -46,7 +46,9 @@ def _constraint_with_relative(
     ``relative`` flag. Since OutcomeConstraint is immutable, we rebuild the
     expression string with the desired relativity."""
     new_expr = build_constraint_expression_str(
-        metric_weights=c.metric_weights,
+        metric_weights=[
+            (name, w) for name, (_, w) in zip(c.metric_names, c.metric_weights)
+        ],
         op=">=" if c.op == ComparisonOp.GEQ else "<=",
         bound=c.bound,
         relative=relative,

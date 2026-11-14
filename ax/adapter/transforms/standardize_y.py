@@ -129,10 +129,7 @@ class StandardizeY(Transform):
             self._check_metrics_available(obj_sigs, context="objective")
             old_weights = [w for _, w in objective.metric_weights]
             new_weights = self._transform_scalarized_weights(obj_sigs, old_weights)
-            new_metric_weights = [
-                (name, new_w)
-                for (name, _), new_w in zip(objective.metric_weights, new_weights)
-            ]
+            new_metric_weights = list(zip(objective.metric_names, new_weights))
             optimization_config.objective = _build_objective_from_metric_weights(
                 new_metric_weights,
                 metric_name_to_signature=objective.metric_name_to_signature,
@@ -240,10 +237,13 @@ class StandardizeY(Transform):
             c_sig = c.metric_signatures[0]
             new_bound = float(c.bound * self.Ystd[c_sig] + self.Ymean[c_sig])
             op_str = ">=" if c.op == ComparisonOp.GEQ else "<="
+            metric_name_weights = [
+                (name, w) for name, (_, w) in zip(c.metric_names, c.metric_weights)
+            ]
             new_constraints.append(
                 OutcomeConstraint(
                     expression=build_constraint_expression_str(
-                        metric_weights=c.metric_weights,
+                        metric_weights=metric_name_weights,
                         op=op_str,
                         bound=new_bound,
                         relative=c.relative,
