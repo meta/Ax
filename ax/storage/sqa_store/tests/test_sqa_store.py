@@ -2150,11 +2150,11 @@ class SQAStoreTest(TestCase):
 
     def test_registry_additions(self) -> None:
         class MyRunner(Runner):
-            # pyrefly: ignore [bad-override]
+            # pyrefly: ignore [bad-function-definition, bad-override]
             def run():
                 pass
 
-            # pyrefly: ignore [bad-override]
+            # pyrefly: ignore [bad-function-definition, bad-override]
             def staging_required():
                 return False
 
@@ -2189,11 +2189,11 @@ class SQAStoreTest(TestCase):
 
     def test_registry_bundle(self) -> None:
         class MyRunner(Runner):
-            # pyrefly: ignore [bad-override]
+            # pyrefly: ignore [bad-function-definition, bad-override]
             def run():
                 pass
 
-            # pyrefly: ignore [bad-override]
+            # pyrefly: ignore [bad-function-definition, bad-override]
             def staging_required():
                 return False
 
