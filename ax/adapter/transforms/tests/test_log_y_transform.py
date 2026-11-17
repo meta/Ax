@@ -214,6 +214,29 @@ class LogYTransformTest(TestCase):
             str(cm.exception),
         )
 
+    def test_TransformOptimizationConfigWithSignatureOverride(self) -> None:
+        # The constraint expression uses the metric name, while the transform
+        # is configured with the metric signature.
+        constraint = OutcomeConstraint(
+            expression="m1 <= 5", metric_name_to_signature={"m1": "m1_sig"}
+        )
+        oc = OptimizationConfig(
+            objective=Objective(metric=Metric(name="m2"), minimize=False),
+            outcome_constraints=[constraint],
+        )
+        tf = LogY(search_space=None, config={"metrics": ["m1_sig"]})
+        oc_tf = tf.transform_optimization_config(deepcopy(oc), None, None)
+        transformed = oc_tf.outcome_constraints[0]
+        self.assertEqual(transformed.metric_names, ["m1"])
+        self.assertEqual(transformed.metric_signatures, ["m1_sig"])
+        self.assertAlmostEqual(transformed.bound, math.log(5.0))
+        untransformed = tf.untransform_outcome_constraints(
+            outcome_constraints=oc_tf.outcome_constraints
+        )[0]
+        self.assertEqual(untransformed.metric_names, ["m1"])
+        self.assertEqual(untransformed.metric_signatures, ["m1_sig"])
+        self.assertAlmostEqual(untransformed.bound, 5.0)
+
     def test_TransformOptimizationConfigMOO(self) -> None:
         m1 = Metric(name="m1", lower_is_better=False)
         m2 = Metric(name="m2", lower_is_better=True)

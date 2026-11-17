@@ -1170,6 +1170,9 @@ class TorchAdapter(Adapter):
             A list of ``ObjectiveThreshold``s on the raw, untransformed scale.
         """
         obj_indices, obj_weights = extract_objectives(objective_weights)
+        # `self.outcomes` holds metric signatures, which may differ from the
+        # metric names used as keys in `opt_config_metrics`.
+        signature_to_metric = {m.signature: m for m in opt_config_metrics.values()}
         thresholds = []
         for i, (idx, w) in enumerate(zip(obj_indices, obj_weights)):
             sign = torch.sign(w)
@@ -1177,7 +1180,7 @@ class TorchAdapter(Adapter):
             raw_bound = float(sign * objective_thresholds[i].item())
             thresholds.append(
                 ObjectiveThreshold(
-                    metric=opt_config_metrics[self.outcomes[idx]],
+                    metric=signature_to_metric[self.outcomes[idx]],
                     bound=raw_bound,
                     relative=False,
                     op=ComparisonOp.LEQ if sign < 0 else ComparisonOp.GEQ,

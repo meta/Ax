@@ -728,6 +728,33 @@ class MultiObjectiveTorchAdapterTest(TestCase):
         self.assertFalse(obj_thresholds[0].relative)
         self.assertFalse(obj_thresholds[1].relative)
 
+    @mock_botorch_optimize
+    def test_objective_thresholds_with_signature_override(self) -> None:
+        # Metric names "m1" and "m2" differ from their signatures "m1_sig" and
+        # "m2_sig". Adapter outcomes use the signatures.
+        exp = get_experiment_with_observations(
+            observations=[[1.0, 2.0], [2.0, 1.0], [1.5, 1.5], [0.5, 2.5], [2.5, 0.2]],
+            signature_suffix=True,
+        )
+        oc = assert_is_instance(
+            exp.optimization_config, MultiObjectiveOptimizationConfig
+        )
+        oc.objective_thresholds = []
+        adapter = TorchAdapter(
+            experiment=exp,
+            generator=BoTorchGenerator(),
+            transforms=Cont_X_trans + Y_trans,
+        )
+        self.assertEqual(adapter.outcomes, ["m1_sig", "m2_sig"])
+        obj_thresholds = adapter.infer_objective_thresholds()
+        self.assertEqual([t.metric_names for t in obj_thresholds], [["m1"], ["m2"]])
+        self.assertEqual(
+            [t.metric_signatures for t in obj_thresholds], [["m1_sig"], ["m2_sig"]]
+        )
+        # Candidate generation untransforms the thresholds in the same way.
+        generator_run = adapter.gen(n=1)
+        self.assertEqual(len(generator_run.arms), 1)
+
     def test_best_point(self) -> None:
         exp = get_branin_experiment_with_multi_objective(
             has_optimization_config=True, with_batch=True
