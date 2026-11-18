@@ -61,6 +61,8 @@ class MergeRepeatedMeasurements(Transform):
                 df_m = df[[("mean", m), ("sem", m)]].dropna(
                     axis=0, subset=[("mean", m)]
                 )
+                if df_m.empty:
+                    continue
                 if any(df_m[("sem", m)].isna()):
                     raise NotImplementedError(
                         "All metrics must have noise observations."
