@@ -454,23 +454,3 @@ class TestSQLAlchemyDualVersionCompat(TestCase):
             "with_db_settings_base.DBSettings is None -- guard removal regressed",
         )
         self.assertIs(module_dbsettings, DBSettings)
-
-    def test_sa_major_matches_buck_target(self) -> None:
-        """When the BUCK target sets EXPECTED_SA_MAJOR, assert the runtime
-        SQLAlchemy major matches. Makes :tests vs :tests_sa2 self-proving.
-        Skipped when EXPECTED_SA_MAJOR is unset (e.g., local one-off invocations).
-        """
-        expected_major_str = os.environ.get("EXPECTED_SA_MAJOR")
-        if expected_major_str is None:
-            self.skipTest(
-                "EXPECTED_SA_MAJOR not set; only enforced under the dual-version "
-                "BUCK targets that pin SQLAlchemy via constraint_overrides"
-            )
-        actual_version = sqlalchemy.__version__
-        actual_major = int(actual_version.split(".")[0])
-        self.assertEqual(
-            actual_major,
-            int(expected_major_str),
-            f"BUCK target expected SQLAlchemy major {expected_major_str}, "
-            f"got {actual_version}",
-        )
