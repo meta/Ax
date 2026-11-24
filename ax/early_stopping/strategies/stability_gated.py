@@ -201,37 +201,28 @@ class StabilityGatedEarlyStoppingStrategy(BaseEarlyStoppingStrategy):
     def set_baseline_reference_curve(
         self, curve: list[tuple[float, float]] | None
     ) -> None:
-        """Set the baseline progression and mean values for single-trial decisions."""
+        """Set the baseline progression and mean values for peer comparisons."""
         self._baseline_reference_curve = curve
 
     def is_baseline_reference_curve_needed(self, experiment: Experiment) -> bool:
-        """Return whether attached data has one candidate and no cached reference."""
+        """Request an uncached baseline once the objective metric has trial data."""
         if self._baseline_reference_curve is not None:
             return False
 
-        metric_signature, _ = self._default_objective_and_direction(
-            experiment=experiment
-        )
         data = experiment.lookup_data()
         if data.df.empty:
             return False
-        metric_rows = data.full_df[data.full_df["metric_signature"] == metric_signature]
-        return self._has_single_candidate_curve(metric_rows)
-
-    @staticmethod
-    def _has_single_candidate_curve(df: pd.DataFrame) -> bool:
-        return df["trial_index"].nunique() == 1
+        metric_signature, _ = self._default_objective_and_direction(
+            experiment=experiment
+        )
+        return bool((data.full_df["metric_signature"] == metric_signature).any())
 
     @overrides
     def _augment_early_stopping_data(
         self, df: pd.DataFrame, metric_signatures: list[str]
     ) -> pd.DataFrame:
-        """Inject baseline as a pseudo-trial when no peer candidate curve exists."""
-        if (
-            self._baseline_reference_curve is None
-            or not metric_signatures
-            or not self._has_single_candidate_curve(df)
-        ):
+        """Inject the supplied baseline as a peer in checkpoint comparisons."""
+        if self._baseline_reference_curve is None or not metric_signatures:
             return df
 
         metric_signature = metric_signatures[0]
