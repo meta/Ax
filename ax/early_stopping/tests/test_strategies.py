@@ -1882,18 +1882,44 @@ class TestStabilityGatedEarlyStoppingStrategy(TestCase):
         )
         self.assertTrue(baseline_rows["sem"].isna().all())
 
-    def test_stability_gated_does_not_need_baseline_with_peer_curve(self) -> None:
+    def test_stability_gated_ranks_baseline_with_peer_curves(self) -> None:
+        progressions = [1e9, 2e9, 3e9, 4e9]
         experiment, metric_signature = self._get_experiment_with_sges_data(
             {
-                0: [(1.0, 0.1), (2.0, 0.09)],
-                1: [(1.0, 0.11), (2.0, 0.10)],
+                0: [(progression, 0.101) for progression in progressions],
+                1: [(progression, 0.101) for progression in progressions],
             }
         )
         strategy = StabilityGatedEarlyStoppingStrategy(
-            metric_signatures=[metric_signature]
+            metric_signatures=[metric_signature],
+            min_progression=1e9,
+            normalize_progressions=False,
+            check_interval=1e9,
+            window_size=2,
+            variance_threshold=1e-5,
+            gap_threshold=4e-4,
+            stability_count=2,
+            top_k_fraction=0.0,
+            min_top_k=1,
+            recent_best_lookback=0,
         )
-
+        self.assertTrue(strategy.is_baseline_reference_curve_needed(experiment))
+        self.assertEqual(
+            strategy.should_stop_trials_early(
+                trial_indices={0, 1}, experiment=experiment
+            ),
+            {},
+        )
+        strategy.set_baseline_reference_curve(
+            curve=[(progression, 0.1) for progression in progressions]
+        )
         self.assertFalse(strategy.is_baseline_reference_curve_needed(experiment))
+        should_stop = strategy.should_stop_trials_early(
+            trial_indices={0, 1}, experiment=experiment
+        )
+        self.assertEqual(set(should_stop), {0, 1})
+        for reason in should_stop.values():
+            self.assertIn("leader_trial=-1", none_throws(reason))
 
     def test_stability_gated_does_not_stop_volatile_trial(self) -> None:
         experiment, metric_signature = self._get_experiment_with_sges_data(
