@@ -64,7 +64,10 @@ from ax.utils.testing.core_stubs import (
 from ax.utils.testing.mock import mock_botorch_optimize
 from ax.utils.testing.preference_stubs import get_pbo_experiment
 from botorch.acquisition import LearnedObjective
-from botorch.acquisition.logei import qLogNoisyExpectedImprovement
+from botorch.acquisition.logei import (
+    qLogNoisyExpectedImprovement,
+    qLogProbabilityOfFeasibility,
+)
 from botorch.acquisition.preference import (
     AnalyticExpectedUtilityOfBestOption,
     qExpectedUtilityOfBestOption,
@@ -1722,6 +1725,55 @@ class AdapterWithPLBOTest(TestCase):
             self.assertEqual(len(acqf_model.models), 2)
         else:
             self.assertEqual(acqf_model.num_outputs, 2)
+
+    @mock_botorch_optimize
+    def test_plbo_with_outcome_constraints(self) -> None:
+        """Use the constraint-only metric for feasibility, not for utility."""
+        generator = BoTorchGenerator()
+        adapter = TorchAdapter(
+            experiment=self.exp,
+            data=self.exp.lookup_data(),
+            generator=generator,
+        )
+        # The fixture's metric1 observations are near 1000.
+        for bound, expected_acqf in (
+            (1100.0, qLogNoisyExpectedImprovement),
+            (900.0, qLogProbabilityOfFeasibility),
+        ):
+            with self.subTest(bound=bound):
+                config = self.pref_opt_config.clone_with_args(
+                    outcome_constraints=[
+                        OutcomeConstraint(
+                            expression=f"metric1 <= {bound}",
+                            metric_name_to_signature={
+                                "metric1": self.exp.get_metric("metric1").signature
+                            },
+                        )
+                    ]
+                )
+                gen_run = adapter.gen(n=1, optimization_config=config)
+                self.assertEqual(len(gen_run.arms), 1)
+
+                acquisition = none_throws(generator._acquisition)
+                self.assertIsInstance(acquisition.acqf, expected_acqf)
+                self.assertEqual(acquisition.acqf.model.num_outputs, 3)
+                self.assertIsNone(acquisition.objective_thresholds)
+                if isinstance(
+                    acqf := acquisition.acqf,
+                    (qLogNoisyExpectedImprovement, qLogProbabilityOfFeasibility),
+                ):
+                    constraint_fns = none_throws(acqf._constraints)
+                else:
+                    self.fail(f"Unexpected acquisition function: {type(acqf)}")
+                self.assertEqual(len(constraint_fns), 1)
+                samples = torch.tensor(
+                    [[bound - 1, 0.0, 0.0], [bound + 1, 0.0, 0.0]],
+                    dtype=torch.double,
+                )
+                torch.testing.assert_close(
+                    constraint_fns[0](samples),
+                    torch.tensor([-1.0, 1.0], dtype=torch.double),
+                )
 
     @mock_botorch_optimize
     def test_plbo_validation_fails_with_allowed_and_disallowed_transform(self) -> None:

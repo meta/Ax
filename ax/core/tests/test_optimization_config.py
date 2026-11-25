@@ -651,23 +651,35 @@ class PreferenceOptimizationConfigTest(TestCase):
         self.assertEqual(config.objective, self.multi_objective)
         self.assertEqual(config.outcome_constraints, [])
 
-        # Test that outcome_constraints are not supported
-        with self.assertRaisesRegex(
-            NotImplementedError, "Outcome constraints are not yet supported"
-        ):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", DeprecationWarning)
-                PreferenceOptimizationConfig(
-                    objective=self.multi_objective,
-                    preference_profile_name=self.preference_profile_name,
-                    outcome_constraints=[
-                        OutcomeConstraint(
-                            metric=self.metrics["metric1"],
-                            op=ComparisonOp.LEQ,
-                            bound=0.5,
-                        )
-                    ],
-                )
+        constraints = [
+            OutcomeConstraint(
+                expression="metric1 <= 0.5",
+                metric_name_to_signature={"metric1": self.metrics["metric1"].signature},
+            )
+        ]
+        constrained = PreferenceOptimizationConfig(
+            objective=self.multi_objective,
+            preference_profile_name=self.preference_profile_name,
+            outcome_constraints=constraints,
+        )
+        self.assertEqual(constrained.outcome_constraints, constraints)
+        self.assertEqual(constrained.all_constraints, constraints)
+        self.assertEqual(constrained.objective_thresholds, [])
+
+        cloned = assert_is_instance(constrained.clone(), PreferenceOptimizationConfig)
+        self.assertEqual(cloned.outcome_constraints, constraints)
+        self.assertIsNot(cloned.outcome_constraints[0], constraints[0])
+        self.assertEqual(
+            constrained.clone_with_args(outcome_constraints=None).outcome_constraints,
+            [],
+        )
+
+        with self.assertRaisesRegex(ValueError, "Duplicate outcome constraints"):
+            PreferenceOptimizationConfig(
+                objective=self.multi_objective,
+                preference_profile_name=self.preference_profile_name,
+                outcome_constraints=constraints * 2,
+            )
 
     def test_Eq(self) -> None:
         config1 = PreferenceOptimizationConfig(
