@@ -81,6 +81,21 @@ def extract_objectives(
     )
 
 
+class _SubsetLearnedObjective(LearnedObjective):
+    """Evaluate learned utility on the objective columns of the posterior samples."""
+
+    def __init__(self, pref_model: Model, outcome_indices: Tensor) -> None:
+        super().__init__(pref_model=pref_model)
+        self._outcome_indices: Tensor
+        self.register_buffer("_outcome_indices", outcome_indices)
+
+    def forward(self, samples: Tensor, X: Tensor | None = None) -> Tensor:
+        """Keep constraint-only columns out of the preference model's input."""
+        return super().forward(
+            samples=samples.index_select(dim=-1, index=self._outcome_indices), X=X
+        )
+
+
 @dataclass
 class SubsetModelData:
     model: Model
@@ -370,13 +385,24 @@ def get_botorch_objective_and_transform(
         (optionally) a `PosteriorTransform`.
     """
 
-    if learned_objective_preference_model is not None:
-        objective = LearnedObjective(pref_model=learned_objective_preference_model)
-        return objective, None
     # qLogProbabilityOfFeasibility uses constraints only, not objectives or
     # posterior transforms.
     if issubclass(botorch_acqf_class, qLogProbabilityOfFeasibility):
         return None, None
+
+    if learned_objective_preference_model is not None:
+        # The model also predicts constraint-only outcomes. The preference model
+        # was trained on objective outcomes in model output order.
+        objective_mask = (objective_weights != 0).any(dim=0)
+        if not objective_mask.all():
+            return (
+                _SubsetLearnedObjective(
+                    pref_model=learned_objective_preference_model,
+                    outcome_indices=objective_mask.nonzero(as_tuple=True)[0],
+                ),
+                None,
+            )
+        return LearnedObjective(pref_model=learned_objective_preference_model), None
 
     if issubclass(
         botorch_acqf_class,

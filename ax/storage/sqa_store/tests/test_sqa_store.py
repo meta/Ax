@@ -1612,11 +1612,15 @@ class SQAStoreTest(TestCase):
         )
 
         test_test_profile = "test_profile_name"
+        outcome_constraint = OutcomeConstraint(
+            expression="m3 <= 0.5", metric_name_to_signature={"m3": "m3"}
+        )
         for expect_relativized_outcomes in (True, False):
             with self.subTest(f"{expect_relativized_outcomes=}"):
                 pref_config = PreferenceOptimizationConfig(
                     objective=multi_objective,
                     preference_profile_name=test_test_profile,
+                    outcome_constraints=[outcome_constraint],
                     expect_relativized_outcomes=expect_relativized_outcomes,
                 )
                 experiment = Experiment(
@@ -1638,6 +1642,9 @@ class SQAStoreTest(TestCase):
                 self.assertEqual(
                     loaded_config.expect_relativized_outcomes,
                     expect_relativized_outcomes,
+                )
+                self.assertEqual(
+                    loaded_config.outcome_constraints, [outcome_constraint]
                 )
                 loaded_objective = assert_is_instance(
                     loaded_config.objective, MultiObjective

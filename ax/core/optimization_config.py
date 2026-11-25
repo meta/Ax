@@ -533,7 +533,7 @@ class PreferenceOptimizationConfig(MultiObjectiveOptimizationConfig):
                 preference profile for the experiment. An auxiliary experiment with
                 this name and purpose PE_EXPERIMENT should be attached to
                 the experiment.
-            outcome_constraints: Constraints on metrics. Not yet supported.
+            outcome_constraints: Constraints on metrics.
             expect_relativized_outcomes: Whether the learned objective expects outcomes
                 in relative percentage scale (e.g., -1 means -1% change vs. status quo)
                 after transforms. When True, TorchAdapter validates that a
@@ -558,13 +558,6 @@ class PreferenceOptimizationConfig(MultiObjectiveOptimizationConfig):
                 "Use `OptimizationConfig` instead if using a "
                 "single-metric objective."
             )
-        if outcome_constraints:
-            raise NotImplementedError(
-                "Outcome constraints are not yet supported in "
-                "PreferenceOptimizationConfig"
-            )
-
-        # Call parent's __init__ with objective_thresholds=None
         super().__init__(
             objective=objective,
             outcome_constraints=outcome_constraints,

@@ -1902,8 +1902,12 @@ class JSONStoreTest(TestCase):
         # Setup: create PreferenceOptimizationConfig with
         # pruning_target_parameterization
         pruning_target_parameterization = get_arm()
+        outcome_constraint = get_outcome_constraint(
+            metric=Metric(name="constraint_metric"), relative=False
+        )
         preference_config = PreferenceOptimizationConfig(
             objective=get_multi_objective(),
+            outcome_constraints=[outcome_constraint],
             pruning_target_parameterization=pruning_target_parameterization,
             preference_profile_name="default",
         )

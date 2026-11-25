@@ -310,6 +310,7 @@ class Acquisition(Base):
         """
         if not (
             torch_opt_config.is_moo
+            and not torch_opt_config.use_learned_objective
             and (
                 self._objective_thresholds is None
                 or self._objective_thresholds.isnan().any()

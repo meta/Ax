@@ -563,10 +563,20 @@ class BoTorchGenerator(TorchGenerator, Base):
             self._user_specified_botorch_acqf_class is None
             and self._botorch_acqf_classes_with_options is None
         ):
+            datasets = self.surrogate.training_data
+            if torch_opt_config.use_learned_objective:
+                # The auxiliary preference data lives in outcome space, not in the
+                # search space used to check feasibility of observed designs.
+                outcome_names = set(self.surrogate.outcomes)
+                datasets = [
+                    dataset
+                    for dataset in datasets
+                    if outcome_names.issuperset(dataset.outcome_names)
+                ]
             self._botorch_acqf_class = choose_botorch_acqf_class(
                 search_space_digest=search_space_digest,
                 torch_opt_config=torch_opt_config,
-                datasets=self.surrogate.training_data,
+                datasets=datasets,
                 use_p_feasible=self.use_p_feasible,
             )
         return self.acquisition_class(
