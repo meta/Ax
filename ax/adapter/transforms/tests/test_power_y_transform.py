@@ -298,6 +298,36 @@ class PowerTransformYTest(TestCase):
         with self.assertRaisesRegex(NotImplementedError, "ScalarizedObjective"):
             tf.transform_optimization_config(oc, None, None)
 
+    def test_transform_optimization_config_with_signature_override(self) -> None:
+        # The constraint expression uses the metric name "a", while the fitted
+        # power transform is keyed by its signature "m1".
+        tf = PowerTransformY(
+            search_space=None,
+            experiment_data=self.experiment_data,
+            config={"metrics": ["m1"]},
+        )
+        bound = 2.345
+        oc = OptimizationConfig(
+            objective=Objective(metric=Metric(name="m2"), minimize=False),
+            outcome_constraints=[
+                OutcomeConstraint(
+                    expression=f"a <= {bound}", metric_name_to_signature={"a": "m1"}
+                )
+            ],
+        )
+        oc_tf = tf.transform_optimization_config(deepcopy(oc), None, None)
+        transformed = oc_tf.outcome_constraints[0]
+        self.assertEqual(transformed.metric_names, ["a"])
+        self.assertEqual(transformed.metric_signatures, ["m1"])
+        tf_bound = tf.power_transforms["m1"].transform(np.array(bound, ndmin=2)).item()
+        self.assertAlmostEqual(transformed.bound, tf_bound)
+        untransformed = tf.untransform_outcome_constraints(
+            outcome_constraints=oc_tf.outcome_constraints, fixed_features=None
+        )[0]
+        self.assertEqual(untransformed.metric_names, ["a"])
+        self.assertEqual(untransformed.metric_signatures, ["m1"])
+        self.assertAlmostEqual(untransformed.bound, bound, places=5)
+
     def test_with_experiment_data(self) -> None:
         experiment_data = extract_experiment_data(
             experiment=self.experiment, data_loader_config=DataLoaderConfig()

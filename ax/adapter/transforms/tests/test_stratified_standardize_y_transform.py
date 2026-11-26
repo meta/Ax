@@ -464,6 +464,54 @@ class StratifiedStandardizeYTransformTest(TestCase):
                 )
             )
 
+    def test_TransformOptimizationConfigWithSignatureOverride(self) -> None:
+        # Expressions use the metric names "y1" and "y2", while the fitted means
+        # and standard deviations are keyed by the signatures "m1" and "m2".
+        name_to_sig = {"y1": "m1", "y2": "m2"}
+        fixed_features = ObservationFeatures({"z": "a"})
+        oc = OptimizationConfig(
+            objective=Objective(
+                expression="0.5*y1 + 0.5*y2", metric_name_to_signature=name_to_sig
+            )
+        )
+        oc_tf = self.t.transform_optimization_config(oc, None, fixed_features)
+        self.assertEqual(oc_tf.objective.metric_names, ["y1", "y2"])
+        self.assertEqual(oc_tf.objective.metric_signatures, ["m1", "m2"])
+        self.assertTrue(
+            np.allclose(
+                [w for _, w in oc_tf.objective.metric_weights],
+                [0.5 * 1.0, 0.5 * sqrt(2) * 3],
+            )
+        )
+        oc = OptimizationConfig(
+            objective=self.objective,
+            outcome_constraints=[
+                OutcomeConstraint(
+                    expression="y1 + 2*y2 <= 10", metric_name_to_signature=name_to_sig
+                )
+            ],
+        )
+        oc_tf = self.t.transform_optimization_config(oc, None, fixed_features)
+        scalarized, single = self.t.untransform_outcome_constraints(
+            [
+                *oc_tf.outcome_constraints,
+                OutcomeConstraint(
+                    expression="y1 <= 2", metric_name_to_signature=name_to_sig
+                ),
+            ],
+            fixed_features,
+        )
+        self.assertEqual(scalarized.metric_names, ["y1", "y2"])
+        self.assertEqual(scalarized.metric_signatures, ["m1", "m2"])
+        self.assertAlmostEqual(scalarized.bound, 10.0)
+        self.assertTrue(
+            np.allclose([w for _, w in scalarized.metric_weights], [1.0, 2.0])
+        )
+        self.assertEqual(single.metric_names, ["y1"])
+        self.assertEqual(single.metric_signatures, ["m1"])
+        # For strata "a": mu_m1 = 1.0 and std_m1 = 1.0.
+        self.assertAlmostEqual(single.bound, 2.0 * 1.0 + 1.0)
+
     def test_TransformAndUntransformScalarizedOutcomeConstraint(self) -> None:
         # Test with ScalarizedOutcomeConstraint
         # Given: constraint = w1*m1 + w2*m2 <= C with w1=1.0, w2=2.0, C=10.0

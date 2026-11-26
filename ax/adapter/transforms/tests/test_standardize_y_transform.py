@@ -279,6 +279,35 @@ class StandardizeYTransformTest(TestCase):
         ):
             MultiObjective([objective_minimize, Objective(metric=m3, minimize=False)])
 
+    def test_TransformOptimizationConfigWithSignatureOverride(self) -> None:
+        # Expressions use the metric names "a" and "b", while the fitted means
+        # and standard deviations are keyed by the signatures "m1" and "m2".
+        name_to_sig = {"a": "m1", "b": "m2"}
+        oc = OptimizationConfig(
+            objective=Objective(
+                expression="0.5*a + 0.5*b", metric_name_to_signature=name_to_sig
+            )
+        )
+        oc_tf = self.t.transform_optimization_config(oc, None, None)
+        self.assertEqual(oc_tf.objective.metric_names, ["a", "b"])
+        self.assertEqual(oc_tf.objective.metric_signatures, ["m1", "m2"])
+        self.assertTrue(
+            np.allclose(
+                [w for _, w in oc_tf.objective.metric_weights],
+                [0.5 * 1.0, 0.5 * sqrt(1 / 3)],
+            )
+        )
+        untransformed = self.t.untransform_outcome_constraints(
+            outcome_constraints=[
+                OutcomeConstraint(
+                    expression="b <= 2", metric_name_to_signature=name_to_sig
+                )
+            ]
+        )[0]
+        self.assertEqual(untransformed.metric_names, ["b"])
+        self.assertEqual(untransformed.metric_signatures, ["m2"])
+        self.assertAlmostEqual(untransformed.bound, 2.0 * sqrt(1 / 3) + 1.5)
+
 
 def osd_allclose(osd1: ObservationData, osd2: ObservationData) -> bool:
     if osd1.metric_signatures != osd2.metric_signatures:
